@@ -58,7 +58,7 @@ Base URL: `http://localhost:5000/api`
 ```json
 {
   "name": "Jane Doe",
-  "email": "jane@example.com",
+  "email": "jane@gmail.com",
   "password": "secret123",
   "role": "customer",        // "customer" | "provider"
   "phone": "+254700000000",  // optional
@@ -68,7 +68,7 @@ Base URL: `http://localhost:5000/api`
 
 **Login body:**
 ```json
-{ "email": "jane@example.com", "password": "secret123" }
+{ "email": "jane@gmail.com", "password": "secret123" }
 ```
 
 ---

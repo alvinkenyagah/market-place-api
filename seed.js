@@ -12,7 +12,7 @@ mongoose.connect(process.env.MONGODB_URI);
 const providers = [
   {
     name: 'John Mwangi',
-    email: 'john@example.com',
+    email: 'john@gmail.com',
     password: 'password123',
     phone: '0711000001',
     location: 'Nairobi',
@@ -20,7 +20,7 @@ const providers = [
   },
   {
     name: 'Sarah Achieng',
-    email: 'sarah@example.com',
+    email: 'sarah@gmail.com',
     password: 'password123',
     phone: '0711000002',
     location: 'Mombasa',
@@ -28,7 +28,7 @@ const providers = [
   },
   {
     name: 'Kevin Otieno',
-    email: 'kevin@example.com',
+    email: 'kevin@gmail.com',
     password: 'password123',
     phone: '0711000003',
     location: 'Kisumu',
@@ -36,7 +36,7 @@ const providers = [
   },
   {
     name: 'Mary Wanjiku',
-    email: 'mary@example.com',
+    email: 'mary@gmail.com',
     password: 'password123',
     phone: '0711000004',
     location: 'Nakuru',
@@ -44,7 +44,7 @@ const providers = [
   },
   {
     name: 'Brian Kiptoo',
-    email: 'brian@example.com',
+    email: 'brian@gmail.com',
     password: 'password123',
     phone: '0711000005',
     location: 'Eldoret',
@@ -52,7 +52,7 @@ const providers = [
   },
   {
     name: 'Faith Njeri',
-    email: 'faith@example.com',
+    email: 'faith@gmail.com',
     password: 'password123',
     phone: '0711000006',
     location: 'Thika',
