@@ -1,7 +1,7 @@
 {
   "name": "marketplace-api",
   "version": "1.0.0",
-  "description": "Marketplace MVP API \u2014 Node.js + MongoDB",
+  "description": "Marketplace MVP API — Node.js + MongoDB",
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
@@ -12,6 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

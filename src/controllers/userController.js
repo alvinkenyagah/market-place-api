@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const { uploadToSupabase } = require('../middleware/upload');
 
 // GET /api/users/profile  — get own profile
 exports.getProfile = async (req, res, next) => {
@@ -13,19 +14,18 @@ exports.getProfile = async (req, res, next) => {
 // PUT /api/users/profile  — update own profile
 exports.updateProfile = async (req, res, next) => {
   try {
-    // 1. Destructure bio from the request body alongside name, phone, and location
     const { name, phone, location, bio } = req.body;
     const update = {};
     
     if (name) update.name = name;
     if (phone) update.phone = phone;
     if (location) update.location = location;
-    
-    // 2. Add bio to the update payload if it is provided in the request
-    // We use typeof check or explicit check to allow users to clear their bio (empty string)
     if (bio !== undefined) update.bio = bio;
     
-    if (req.file) update.profileImage = `/uploads/${req.file.filename}`;
+    // Process single avatar image buffer if it is included in req
+    if (req.file) {
+      update.profileImage = await uploadToSupabase(req.file, 'profiles');
+    }
 
     const user = await User.findByIdAndUpdate(req.user._id, update, { new: true, runValidators: true });
     res.status(200).json({ success: true, message: 'Profile updated.', user });

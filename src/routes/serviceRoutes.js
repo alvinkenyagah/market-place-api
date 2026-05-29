@@ -10,7 +10,7 @@ const {
   getMyServices,
 } = require('../controllers/serviceController');
 const { protect, restrictTo } = require('../middleware/auth');
-const upload = require('../middleware/upload');
+const {upload} = require('../middleware/upload');
 
 const router = express.Router();
 

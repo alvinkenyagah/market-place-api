@@ -1,5 +1,6 @@
 const { validationResult } = require('express-validator');
 const Service = require('../models/Service');
+const { uploadToSupabase } = require('../middleware/upload');
 
 // GET /api/services — public, browse + search
 exports.getServices = async (req, res, next) => {
@@ -12,7 +13,6 @@ exports.getServices = async (req, res, next) => {
       query.$text = { $search: search };
     }
     
-    // ENHANCEMENT: Handle multi-category comma-separated arrays from the checklist
     if (category) {
       if (category.includes(',')) {
         const categoryArray = category.split(',');
@@ -52,12 +52,8 @@ exports.getServices = async (req, res, next) => {
 // GET /api/services/categories — public, aggregates unique categories in use
 exports.getCategories = async (req, res, next) => {
   try {
-    // Collect unique category strings from registered active services
     const categories = await Service.distinct('category', { isActive: true });
-    
-    // Sort them alphabetically for a predictable UI presentation layout
     categories.sort((a, b) => a.localeCompare(b));
-    
     res.status(200).json(categories);
   } catch (error) {
     next(error);
@@ -89,14 +85,19 @@ exports.createService = async (req, res, next) => {
     }
 
     const { title, description, category, price, location } = req.body;
-    const images = req.files ? req.files.map((f) => `/uploads/${f.filename}`) : [];
-
-    if (images.length > 4) {
+    
+    // Safety check on file count from memory storage
+    const reqFiles = req.files || [];
+    if (reqFiles.length > 4) {
       return res.status(400).json({
         success: false,
         message: 'You can upload a maximum of 4 images for a service.',
       });
     }
+
+    // Map each file buffer to a Supabase upload pipeline
+    const uploadPromises = reqFiles.map((file) => uploadToSupabase(file, 'services'));
+    const images = await Promise.all(uploadPromises);
 
     const service = await Service.create({
       providerId: req.user._id,
@@ -105,7 +106,7 @@ exports.createService = async (req, res, next) => {
       category,
       price: Number(price),
       location,
-      images,
+      images, // Stores global URLs array directly inside MongoDB
     });
 
     res.status(201).json({ success: true, message: 'Service created successfully.', service });
@@ -133,15 +134,20 @@ exports.updateService = async (req, res, next) => {
         : [req.body.existingImages];
     }
 
-    const newImages = req.files ? req.files.map((f) => `/uploads/${f.filename}`) : [];
-    const finalImagesArray = [...retainedImages, ...newImages];
+    const reqFiles = req.files || [];
+    const totalImagesCount = retainedImages.length + reqFiles.length;
 
-    if (finalImagesArray.length > 4) {
+    if (totalImagesCount > 4) {
       return res.status(400).json({
         success: false,
-        message: `Maximum 4 images allowed. Total requested: ${finalImagesArray.length} (Retained: ${retainedImages.length}, New uploads: ${newImages.length})`,
+        message: `Maximum 4 images allowed. Total requested: ${totalImagesCount} (Retained: ${retainedImages.length}, New uploads: ${reqFiles.length})`,
       });
     }
+
+    // Process and append new images to existing assets
+    const uploadPromises = reqFiles.map((file) => uploadToSupabase(file, 'services'));
+    const newImages = await Promise.all(uploadPromises);
+    const finalImagesArray = [...retainedImages, ...newImages];
 
     const updatedService = await Service.findByIdAndUpdate(
       req.params.id,
