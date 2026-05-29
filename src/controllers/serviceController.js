@@ -1,8 +1,9 @@
 const { validationResult } = require('express-validator');
 const Service = require('../models/Service');
-const { uploadToSupabase } = require('../middleware/upload');
+const { uploadToCloudinary } = require('../middleware/upload');
 
-// GET /api/services — public, browse + search
+// @desc    GET /api/services — public, browse + search + filters
+// @access  Public
 exports.getServices = async (req, res, next) => {
   try {
     const { search, category, location, minPrice, maxPrice, page = 1, limit = 12 } = req.query;
@@ -13,6 +14,7 @@ exports.getServices = async (req, res, next) => {
       query.$text = { $search: search };
     }
     
+    // Handle multi-category comma-separated arrays from the checklist interface
     if (category) {
       if (category.includes(',')) {
         const categoryArray = category.split(',');
@@ -49,18 +51,24 @@ exports.getServices = async (req, res, next) => {
   }
 };
 
-// GET /api/services/categories — public, aggregates unique categories in use
+// @desc    GET /api/services/categories — aggregates unique active system categories
+// @access  Public
 exports.getCategories = async (req, res, next) => {
   try {
+    // Collect unique category strings from registered active services
     const categories = await Service.distinct('category', { isActive: true });
+    
+    // Sort them alphabetically for a predictable UI presentation layout
     categories.sort((a, b) => a.localeCompare(b));
+    
     res.status(200).json(categories);
   } catch (error) {
     next(error);
   }
 };
 
-// GET /api/services/:id — public
+// @desc    GET /api/services/:id — view explicit service metadata
+// @access  Public
 exports.getService = async (req, res, next) => {
   try {
     const service = await Service.findById(req.params.id).populate(
@@ -76,7 +84,8 @@ exports.getService = async (req, res, next) => {
   }
 };
 
-// POST /api/services — provider only
+// @desc    POST /api/services — create new marketplace item
+// @access  Private (Provider Only)
 exports.createService = async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -86,7 +95,7 @@ exports.createService = async (req, res, next) => {
 
     const { title, description, category, price, location } = req.body;
     
-    // Safety check on file count from memory storage
+    // Guard clause checking file array size before spending API request pools
     const reqFiles = req.files || [];
     if (reqFiles.length > 4) {
       return res.status(400).json({
@@ -95,8 +104,8 @@ exports.createService = async (req, res, next) => {
       });
     }
 
-    // Map each file buffer to a Supabase upload pipeline
-    const uploadPromises = reqFiles.map((file) => uploadToSupabase(file, 'services'));
+    // Process memory-stored buffers into Cloudinary streams simultaneously
+    const uploadPromises = reqFiles.map((file) => uploadToCloudinary(file, 'services'));
     const images = await Promise.all(uploadPromises);
 
     const service = await Service.create({
@@ -106,7 +115,7 @@ exports.createService = async (req, res, next) => {
       category,
       price: Number(price),
       location,
-      images, // Stores global URLs array directly inside MongoDB
+      images, // Contains clean Cloudinary secure URL arrays
     });
 
     res.status(201).json({ success: true, message: 'Service created successfully.', service });
@@ -115,7 +124,8 @@ exports.createService = async (req, res, next) => {
   }
 };
 
-// PUT /api/services/:id — provider (owner) only
+// @desc    PUT /api/services/:id — edit service elements + manage image sets
+// @access  Private (Owner Only)
 exports.updateService = async (req, res, next) => {
   try {
     const service = await Service.findById(req.params.id);
@@ -127,6 +137,7 @@ exports.updateService = async (req, res, next) => {
 
     const { title, description, category, price, location, isActive } = req.body;
     
+    // Handle validation array transformations for existing retained images
     let retainedImages = [];
     if (req.body.existingImages) {
       retainedImages = Array.isArray(req.body.existingImages)
@@ -144,8 +155,8 @@ exports.updateService = async (req, res, next) => {
       });
     }
 
-    // Process and append new images to existing assets
-    const uploadPromises = reqFiles.map((file) => uploadToSupabase(file, 'services'));
+    // Process and push any additional image uploads
+    const uploadPromises = reqFiles.map((file) => uploadToCloudinary(file, 'services'));
     const newImages = await Promise.all(uploadPromises);
     const finalImagesArray = [...retainedImages, ...newImages];
 
@@ -169,7 +180,8 @@ exports.updateService = async (req, res, next) => {
   }
 };
 
-// DELETE /api/services/:id — provider (owner) or admin
+// @desc    DELETE /api/services/:id — completely remove service listing
+// @access  Private (Owner or Admin Only)
 exports.deleteService = async (req, res, next) => {
   try {
     const service = await Service.findById(req.params.id);
@@ -189,7 +201,8 @@ exports.deleteService = async (req, res, next) => {
   }
 };
 
-// GET /api/services/provider/my — provider's own listings
+// @desc    GET /api/services/provider/my — display self-hosted active services
+// @access  Private (Provider Only)
 exports.getMyServices = async (req, res, next) => {
   try {
     const services = await Service.find({ providerId: req.user._id }).sort({ createdAt: -1 });

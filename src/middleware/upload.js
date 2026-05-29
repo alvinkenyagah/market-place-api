@@ -1,14 +1,15 @@
 const multer = require('multer');
 const path = require('path');
-const { createClient } = require('@supabase/supabase-js');
+const cloudinary = require('cloudinary').v2;
 
-// Initialize Supabase Client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_KEY;
-const supabaseBucket = process.env.SUPABASE_BUCKET || 'uploads';
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Configure Cloudinary with environment variables
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-// Use memory storage so file buffers are available in req.file / req.files
+// Store incoming files in memory as buffers
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
@@ -28,30 +29,30 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 });
 
-// Helper function to upload a single buffer to Supabase
-const uploadToSupabase = async (file, folder = 'general') => {
-  const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-  const filename = `${folder}/${uniqueSuffix}${path.extname(file.originalname)}`;
+/**
+ * Helper function to upload a memory buffer to Cloudinary
+ * @param {Object} file - The req.file object from Multer
+ * @param {String} folder - Cloudinary folder name (e.g., 'profiles', 'services')
+ */
+const uploadToCloudinary = (file, folder = 'general') => {
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: `marketplace/${folder}`, // Organizes assets into folders in your Media Library
+        resource_type: 'auto',
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result.secure_url); // Returns the persistent global 'https://...' URL
+      }
+    );
 
-  const { data, error } = await supabase.storage
-    .from(supabaseBucket)
-    .upload(filename, file.buffer, {
-      contentType: file.mimetype,
-      upsert: false,
-    });
-
-  if (error) throw error;
-
-  // Retrieve public URL for the uploaded file
-  const { data: publicUrlData } = supabase.storage
-    .from(supabaseBucket)
-    .getPublicUrl(filename);
-
-  return publicUrlData.publicUrl;
+    // Write the file buffer to the Cloudinary stream
+    uploadStream.end(file.buffer);
+  });
 };
 
-// Export both multer and the helper function
 module.exports = {
   upload,
-  uploadToSupabase,
+  uploadToCloudinary,
 };

@@ -1,7 +1,8 @@
 const User = require('../models/User');
-const { uploadToSupabase } = require('../middleware/upload');
+const { uploadToCloudinary } = require('../middleware/upload');
 
-// GET /api/users/profile  — get own profile
+// @desc    GET /api/users/profile — get own profile
+// @access  Private
 exports.getProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id);
@@ -11,7 +12,8 @@ exports.getProfile = async (req, res, next) => {
   }
 };
 
-// PUT /api/users/profile  — update own profile
+// @desc    PUT /api/users/profile — update own profile + optional avatar upload
+// @access  Private
 exports.updateProfile = async (req, res, next) => {
   try {
     const { name, phone, location, bio } = req.body;
@@ -22,19 +24,24 @@ exports.updateProfile = async (req, res, next) => {
     if (location) update.location = location;
     if (bio !== undefined) update.bio = bio;
     
-    // Process single avatar image buffer if it is included in req
+    // Upload profile image buffer to the Cloudinary "profiles" folder
     if (req.file) {
-      update.profileImage = await uploadToSupabase(req.file, 'profiles');
+      update.profileImage = await uploadToCloudinary(req.file, 'profiles');
     }
 
-    const user = await User.findByIdAndUpdate(req.user._id, update, { new: true, runValidators: true });
+    const user = await User.findByIdAndUpdate(req.user._id, update, { 
+      new: true, 
+      runValidators: true 
+    });
+    
     res.status(200).json({ success: true, message: 'Profile updated.', user });
   } catch (error) {
     next(error);
   }
 };
 
-// GET /api/users/:id  — view a provider's public profile
+// @desc    GET /api/users/:id — view a provider's public profile
+// @access  Public
 exports.getUserProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id).select('-__v');
