@@ -2,6 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const {
   getServices,
+  getCategories, // Imported new handler
   getService,
   createService,
   updateService,
@@ -23,6 +24,7 @@ const serviceValidation = [
 
 // Public routes
 router.get('/', getServices);
+router.get('/categories', getCategories); // MUST be declared before /:id route block
 router.get('/:id', getService);
 
 // Protected routes

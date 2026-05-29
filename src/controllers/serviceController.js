@@ -1,7 +1,7 @@
 const { validationResult } = require('express-validator');
 const Service = require('../models/Service');
 
-// GET /api/services  — public, browse + search
+// GET /api/services — public, browse + search
 exports.getServices = async (req, res, next) => {
   try {
     const { search, category, location, minPrice, maxPrice, page = 1, limit = 12 } = req.query;
@@ -11,7 +11,17 @@ exports.getServices = async (req, res, next) => {
     if (search) {
       query.$text = { $search: search };
     }
-    if (category) query.category = { $regex: new RegExp(category, 'i') };
+    
+    // ENHANCEMENT: Handle multi-category comma-separated arrays from the checklist
+    if (category) {
+      if (category.includes(',')) {
+        const categoryArray = category.split(',');
+        query.category = { $in: categoryArray };
+      } else {
+        query.category = { $regex: new RegExp(category, 'i') };
+      }
+    }
+    
     if (location) query.location = { $regex: new RegExp(location, 'i') };
     if (minPrice || maxPrice) {
       query.price = {};
@@ -39,7 +49,22 @@ exports.getServices = async (req, res, next) => {
   }
 };
 
-// GET /api/services/:id  — public
+// GET /api/services/categories — public, aggregates unique categories in use
+exports.getCategories = async (req, res, next) => {
+  try {
+    // Collect unique category strings from registered active services
+    const categories = await Service.distinct('category', { isActive: true });
+    
+    // Sort them alphabetically for a predictable UI presentation layout
+    categories.sort((a, b) => a.localeCompare(b));
+    
+    res.status(200).json(categories);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/services/:id — public
 exports.getService = async (req, res, next) => {
   try {
     const service = await Service.findById(req.params.id).populate(
@@ -55,7 +80,7 @@ exports.getService = async (req, res, next) => {
   }
 };
 
-// POST /api/services  — provider only
+// POST /api/services — provider only
 exports.createService = async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -66,7 +91,6 @@ exports.createService = async (req, res, next) => {
     const { title, description, category, price, location } = req.body;
     const images = req.files ? req.files.map((f) => `/uploads/${f.filename}`) : [];
 
-    // Check image limit on creation
     if (images.length > 4) {
       return res.status(400).json({
         success: false,
@@ -90,7 +114,7 @@ exports.createService = async (req, res, next) => {
   }
 };
 
-// PUT /api/services/:id  — provider (owner) only
+// PUT /api/services/:id — provider (owner) only
 exports.updateService = async (req, res, next) => {
   try {
     const service = await Service.findById(req.params.id);
@@ -102,7 +126,6 @@ exports.updateService = async (req, res, next) => {
 
     const { title, description, category, price, location, isActive } = req.body;
     
-    // Parse existing retained images from FormData payload safely
     let retainedImages = [];
     if (req.body.existingImages) {
       retainedImages = Array.isArray(req.body.existingImages)
@@ -110,13 +133,9 @@ exports.updateService = async (req, res, next) => {
         : [req.body.existingImages];
     }
 
-    // Map any incoming new upload image objects to their destination paths
     const newImages = req.files ? req.files.map((f) => `/uploads/${f.filename}`) : [];
-
-    // Combine retained images with new file uploads
     const finalImagesArray = [...retainedImages, ...newImages];
 
-    // Enforce maximum images limit rule validation check
     if (finalImagesArray.length > 4) {
       return res.status(400).json({
         success: false,
@@ -133,7 +152,7 @@ exports.updateService = async (req, res, next) => {
         ...(price !== undefined && { price: Number(price) }),
         ...(location && { location }),
         ...(isActive !== undefined && { isActive }),
-        images: finalImagesArray // Completely overwrite array state with the remaining + fresh uploads setup
+        images: finalImagesArray
       },
       { returnDocument: 'after', runValidators: true }
     );
@@ -144,7 +163,7 @@ exports.updateService = async (req, res, next) => {
   }
 };
 
-// DELETE /api/services/:id  — provider (owner) or admin
+// DELETE /api/services/:id — provider (owner) or admin
 exports.deleteService = async (req, res, next) => {
   try {
     const service = await Service.findById(req.params.id);
@@ -164,7 +183,7 @@ exports.deleteService = async (req, res, next) => {
   }
 };
 
-// GET /api/services/provider/my  — provider's own listings
+// GET /api/services/provider/my — provider's own listings
 exports.getMyServices = async (req, res, next) => {
   try {
     const services = await Service.find({ providerId: req.user._id }).sort({ createdAt: -1 });
