@@ -8,7 +8,7 @@ exports.getServices = async (req, res, next) => {
   try {
     const { search, category, location, minPrice, maxPrice, page = 1, limit = 12 } = req.query;
 
-    const query = { isActive: true };
+const query = { isActive: true, isAdminSuspended: false };
 
     if (search) {
       query.$text = { $search: search };

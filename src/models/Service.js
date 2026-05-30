@@ -54,6 +54,18 @@ const serviceSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    // --- ADDED FOR ADMIN SUSPENSION ---
+    isAdminSuspended: {
+      type: Boolean,
+      default: false,
+    },
+    suspensionNote: {
+      type: String,
+      default: '',
+    },
+
+
   },
   {
     timestamps: true,

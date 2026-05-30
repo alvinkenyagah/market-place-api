@@ -106,6 +106,41 @@ exports.getServices = async (req, res, next) => {
   }
 };
 
+
+// PATCH /api/admin/services/:id/suspend — toggle service suspension with a note
+exports.suspendService = async (req, res, next) => {
+  try {
+    const { note } = req.body;
+    const service = await Service.findById(req.params.id);
+    
+    if (!service) {
+      return res.status(404).json({ success: false, message: 'Service not found.' });
+    }
+
+    // Toggle suspension state
+    service.isAdminSuspended = !service.isAdminSuspended;
+    
+    // Manage suspension note allocation
+    if (service.isAdminSuspended) {
+      service.suspensionNote = note || 'Suspended by an Administrator.';
+    } else {
+      service.suspensionNote = ''; // Clear note upon unsuspension
+    }
+
+    await service.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Service status updated to: ${service.isAdminSuspended ? 'Suspended' : 'Active'}.`,
+      service,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+
 // DELETE /api/admin/services/:id
 exports.removeService = async (req, res, next) => {
   try {
