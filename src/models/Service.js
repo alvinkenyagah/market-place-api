@@ -24,14 +24,30 @@ const serviceSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Please add a price'],
     },
+    // --- LOCATION REFACTOR ---
     location: {
-      type: String,
-      required: [true, 'Please add a location'],
+      formattedAddress: {
+        type: String,
+        required: [true, 'Please add a human-readable location'],
+      },
+      coordinates: {
+        type: {
+          type: String,
+          enum: ['Point'],
+          required: true,
+          default: 'Point',
+        },
+        // [longitude, latitude]
+        coordinates: {
+          type: [Number],
+          required: true,
+        },
+      },
     },
+    // -------------------------
     images: {
       type: [String],
       default: [],
-      // The custom validator restricting the array length to a maximum of 4
       validate: [arrayLimit, 'A service can have a maximum of 4 images.'],
     },
     isActive: {
@@ -44,13 +60,13 @@ const serviceSchema = new mongoose.Schema(
   }
 );
 
-// Custom validation function for the images array
 function arrayLimit(val) {
   return val.length <= 4;
 }
 
-// Index for search
-serviceSchema.index({ title: 'text', description: 'text', category: 'text', location: 'text' });
+// Updated index layouts
+serviceSchema.index({ title: 'text', description: 'text', category: 'text', 'location.formattedAddress': 'text' });
+serviceSchema.index({ 'location.coordinates': '2dsphere' }); // Allows fast proximity queries
 serviceSchema.index({ providerId: 1 });
 serviceSchema.index({ category: 1 });
 serviceSchema.index({ isActive: 1 });

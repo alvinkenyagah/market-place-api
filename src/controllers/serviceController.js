@@ -24,7 +24,11 @@ exports.getServices = async (req, res, next) => {
       }
     }
     
-    if (location) query.location = { $regex: new RegExp(location, 'i') };
+    // Search within the nested human-readable text string
+    if (location) {
+      query['location.formattedAddress'] = { $regex: new RegExp(location, 'i') };
+    }
+
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);
@@ -93,7 +97,7 @@ exports.createService = async (req, res, next) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { title, description, category, price, location } = req.body;
+    const { title, description, category, price, formattedAddress, longitude, latitude } = req.body;
     
     // Guard clause checking file array size before spending API request pools
     const reqFiles = req.files || [];
@@ -114,7 +118,13 @@ exports.createService = async (req, res, next) => {
       description,
       category,
       price: Number(price),
-      location,
+      location: {
+        formattedAddress,
+        coordinates: {
+          type: 'Point',
+          coordinates: [Number(longitude), Number(latitude)] // GeoJSON rule: [Lng, Lat]
+        }
+      },
       images, // Contains clean Cloudinary secure URL arrays
     });
 
@@ -135,7 +145,7 @@ exports.updateService = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Not authorized to edit this service.' });
     }
 
-    const { title, description, category, price, location, isActive } = req.body;
+    const { title, description, category, price, formattedAddress, longitude, latitude, isActive } = req.body;
     
     // Handle validation array transformations for existing retained images
     let retainedImages = [];
@@ -160,17 +170,32 @@ exports.updateService = async (req, res, next) => {
     const newImages = await Promise.all(uploadPromises);
     const finalImagesArray = [...retainedImages, ...newImages];
 
+    const updateFields = {
+      ...(title && { title }),
+      ...(description && { description }),
+      ...(category && { category }),
+      ...(price !== undefined && { price: Number(price) }),
+      ...(isActive !== undefined && { isActive }),
+      images: finalImagesArray
+    };
+
+    // Safely update nested location parameters if provided
+    if (formattedAddress || (longitude && latitude)) {
+      updateFields.location = {
+        formattedAddress: formattedAddress || service.location.formattedAddress,
+        coordinates: {
+          type: 'Point',
+          coordinates: [
+            longitude ? Number(longitude) : service.location.coordinates.coordinates[0],
+            latitude ? Number(latitude) : service.location.coordinates.coordinates[1],
+          ]
+        }
+      };
+    }
+
     const updatedService = await Service.findByIdAndUpdate(
       req.params.id,
-      {
-        ...(title && { title }),
-        ...(description && { description }),
-        ...(category && { category }),
-        ...(price !== undefined && { price: Number(price) }),
-        ...(location && { location }),
-        ...(isActive !== undefined && { isActive }),
-        images: finalImagesArray
-      },
+      updateFields,
       { returnDocument: 'after', runValidators: true }
     );
 
