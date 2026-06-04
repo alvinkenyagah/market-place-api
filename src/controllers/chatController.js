@@ -5,7 +5,7 @@ const Service = require('../models/Service');
 // POST /api/chats/inquiry — Customer submits structured inquiry
 exports.createInquiryChat = async (req, res, next) => {
   try {
-    const { serviceId, description, budget, deadline } = req.body;
+    const { serviceId, description } = req.body; // 👈 Cleaned: Removed budget & deadline
     const customerId = req.user._id;
 
     // 1. Validate service
@@ -29,8 +29,8 @@ exports.createInquiryChat = async (req, res, next) => {
       isNewChat = true;
     }
 
-    // 3. Format the structured initial inquiry text
-    const inquiryText = `I need: ${description}\nBudget: ${budget}\nDeadline: ${deadline}`;
+    // 3. Format clean text without 'undefined' outputs
+    const inquiryText = description; 
 
     // 4. Persist the inquiry message
     const initialMessage = await Message.create({
@@ -44,7 +44,6 @@ exports.createInquiryChat = async (req, res, next) => {
     chat.lastMessage = initialMessage._id;
     await chat.save();
 
-    // 6. Return payload (If socket is connected, the client can use this room ID to join)
     res.status(201).json({
       success: true,
       message: isNewChat ? 'Inquiry submitted and chat thread opened.' : 'Inquiry added to existing thread.',
@@ -64,11 +63,12 @@ exports.getConversations = async (req, res, next) => {
       $or: [{ customerId: userId }, { providerId: userId }],
     })
       .populate('serviceId', 'title price')
-      .populate('customerId', 'name profileImage')
-      .populate('providerId', 'name profileImage')
+      .populate('customerId', 'name profileImage role') // 👈 Added role to help the frontend UI badge
+      .populate('providerId', 'name profileImage role')  // 👈 Added role to help the frontend UI badge
       .populate('lastMessage')
       .sort({ updatedAt: -1 });
 
+    // Send back a clean, descriptive response payload
     res.status(200).json({ success: true, chats });
   } catch (error) {
     next(error);
@@ -81,7 +81,6 @@ exports.getChatMessages = async (req, res, next) => {
     const { chatId } = req.params;
     const userId = req.user._id;
 
-    // Authorization check
     const chat = await Chat.findById(chatId);
     if (!chat) return res.status(404).json({ success: false, message: 'Chat not found.' });
 
