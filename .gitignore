@@ -5,3 +5,4 @@ uploads/*
 *.log
 scripts/
 seed.js
+redo.js
