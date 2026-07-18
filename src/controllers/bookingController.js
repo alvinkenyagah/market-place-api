@@ -112,8 +112,8 @@ exports.updateBookingStatus = async (req, res, next) => {
     const isCustomer = booking.customerId.toString() === req.user._id.toString();
 
     // Define allowed transitions per role
-    const providerAllowed = ['accepted', 'completed', 'cancelled'];
-    const customerAllowed = ['cancelled'];
+    const providerAllowed = ['accepted', 'cancelled'];
+    const customerAllowed = ['cancelled', 'completed'];
 
     if (isProvider && !providerAllowed.includes(status)) {
       return res.status(400).json({ success: false, message: `Provider cannot set status to '${status}'.` });

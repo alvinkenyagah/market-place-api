@@ -17,6 +17,7 @@ const reviewRoutes = require('./src/routes/reviewRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const adminRoutes = require('./src/routes/adminRoutes');
 const chatRoutes = require('./src/routes/chatRoutes'); // 3. Import new chat routes
+const reportRoutes = require('./src/routes/reportRoutes');
 const { errorHandler, notFound } = require('./src/middleware/errorHandler');
 
 // Connect to MongoDB
@@ -70,7 +71,7 @@ app.use('/api/reviews', reviewRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/chats', chatRoutes); // 6. Mount chat routes
-
+app.use('/api/reports', reportRoutes);
 // Error handling
 app.use(notFound);
 app.use(errorHandler);

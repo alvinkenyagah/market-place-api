@@ -2,7 +2,7 @@ const User = require('../models/User');
 const Service = require('../models/Service');
 const Booking = require('../models/Booking');
 const Review = require('../models/Review');
-
+const Report = require('../models/Report');
 // GET /api/admin/dashboard  — stats overview
 exports.getDashboard = async (req, res, next) => {
   try {
@@ -207,3 +207,52 @@ exports.getBookings = async (req, res, next) => {
     next(error);
   }
 };
+
+
+exports.getReports = async (req, res, next) => {
+  try {
+    const { reason, page = 1, limit = 20 } = req.query;
+    const query = {};
+    if (reason) query.reason = reason;
+
+    const skip = (Number(page) - 1) * Number(limit);
+    const total = await Report.countDocuments(query);
+    
+    const reports = await Report.find(query)
+      .populate('reporterId', 'name email profileImage')
+      .populate('providerId', 'name email isSuspended profileImage')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+    res.status(200).json({ 
+      success: true, 
+      total, 
+      page: Number(page), 
+      totalPages: Math.ceil(total / Number(limit)),
+      reports 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Dismiss a single individual report entry
+// @route   DELETE /api/admin/reports/:id
+// @access  Private (Admin Only)
+exports.dismissReport = async (req, res, next) => {
+  try {
+    const report = await Report.findById(req.params.id);
+    if (!report) {
+      return res.status(404).json({ success: false, message: 'Report incident entry not found.' });
+    }
+
+    await report.deleteOne();
+    res.status(200).json({ success: true, message: 'Report dismissed successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
+

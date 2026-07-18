@@ -10,7 +10,9 @@ const {
   getServices,
   removeService,
   getBookings,
-  suspendService, // <--- Imported your new feature handler
+  suspendService,
+  getReports,       // 💡 Added your new controller imports here
+  dismissReport,     // 💡 Added your new controller imports here
 } = require('../controllers/adminController');
 
 const router = express.Router();
@@ -30,6 +32,11 @@ const validateRequest = (req, res, next) => {
 router.use(protect);
 router.use(restrictTo('admin'));
 
+// --- 🆕 Compliance Report Routes ---
+// Global locks above already handle authorization, so keep these clean!
+router.get('/reports', getReports);
+router.delete('/reports/:id', dismissReport);
+
 // --- Dashboard Routes ---
 router.get('/dashboard', getDashboard);
 
@@ -42,7 +49,7 @@ router.delete('/users/:id', deleteUser);
 router.get('/services', getServices);
 router.delete('/services/:id', removeService);
 
-// 🆕 NEW: Suspend service with mandatory explanation note when suspending
+// 🆕 Suspend service with mandatory explanation note when suspending
 router.patch(
   '/services/:id/suspend',
   [
