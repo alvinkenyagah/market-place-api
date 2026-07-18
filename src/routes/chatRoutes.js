@@ -14,8 +14,7 @@ router.post(
   [
     body('serviceId').notEmpty().withMessage('Service ID is required'),
     body('description').notEmpty().withMessage('Project description is required'),
-    body('budget').notEmpty().withMessage('Budget detail is required'),
-    body('deadline').notEmpty().withMessage('Deadline timeframe is required'),
+
   ],
   createInquiryChat
 );

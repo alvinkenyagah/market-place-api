@@ -47,7 +47,7 @@ router.patch(
   '/services/:id/suspend',
   [
     body('note')
-      .optional()
+      .optional({ checkFalsy: true })
       .trim()
       .isLength({ min: 5 })
       .withMessage('Suspension note must be at least 5 characters long if provided.'),
